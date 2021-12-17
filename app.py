@@ -12,22 +12,112 @@ for solving the Map Coloring Problem.
 import sys
 import copy
 
-# Node Class for each variable
-class Node:
-    def __init__(self, name, adj, domain):
-        self.name = name
-        self.adj = adj
-        self.domain = domain
-
 # Problem Class
 class Problem:
-    def __init__(self, num_var, num_domain, var_names, var_list):
-        self.num_var = num_var
-        self.domain = num_domain
+    def __init__(self, adj, domain, var_names):
+        self.adj = adj
+        self.domain = domain
         self.var_names = var_names
-        self.var_list = var_list
 
+# Check if assignment is complete
+def complete(csp, assignment):
+    # Check if all variables are assigned a value
+    for var in assignment:
+        if len(assignment[var]) > 1 or len(assignment[var]) == 0:
+            return False
+    
+    # Check if all assignments are legal
+    for var in assignment:
+        for adj in csp.adj[var]:
+            if assignment[var] == assignment[adj]:
+                return False
+
+    return True
+
+# Select unassigned variable using MRV and Degree Heuristics
+def selectUnassigned(csp, assignment):
+    # MRV Heuristic
+    # Number for minimum remaining value
+    min_rem = len(csp.domain) + 1
+
+    for elem in assignment:
+        if len(assignment[elem]) > 1:
+            min_rem = min(min_rem, len(assignment[elem]))
+
+    # Find variables with minimum remaining value
+    MRV_candidate = []
+
+    for elem in assignment:
+        if len(assignment[elem]) == min_rem:
+            MRV_candidate.append(elem)
+
+    # Degree Heuristic
+    final_candidate = []
+    degree = ('var',0)
+
+    for elem in MRV_candidate:
+        neighbors = csp.adj[elem]
+        count = 0
+        # Count number of unassigned neighbors
+        for neighbor in neighbors:
+            if len(assignment[neighbor]) != 1:
+                count += 1
+
+        if count >= degree[1]:
+            degree = (elem, count)
+
+    return degree[0]
+
+# Inference function
+def inference(csp, var, assignment):
+    neighbors = csp.adj[var]
+    
+    for neighbor in neighbors:
+        if assignment[var][0] in assignment[neighbor]:
+            assignment[neighbor].remove(assignment[var][0])
+        if len(assignment[neighbor]) == 0:
+            return False
+    
+    return True
+
+# Backtracking search algorithm
+def backtrack(csp, assignment):
+    # Check if assignment is complete
+    if complete(csp, assignment):
+        return assignment
+    # Select variable
+    var = selectUnassigned(csp, assignment)
+    for val in csp.domain:
+        # If value is consistent with assignment
+        if val in assignment[var]:
+            backup = assignment
+            assignment[var] = [val]
+
+            inferences = inference(csp, var, assignment)
+
+            if inferences:
+                result = backtrack(csp, assignment)
+                if result:
+                    return result
+
+            assignment = backup
+    return False
+
+# Search
 def search(csp):
+    # Initialize assignment set
+    assignment = {}
+    for var in csp.var_names:
+        assignment[var] = copy.copy(csp.domain)
+
+    return backtrack(csp, assignment)
+
+# Create and write to output file
+def output(res):
+    f = open("output.txt", 'w')
+
+    for var in res:
+        f.write(var + ' = ' + res[var][0] + '\n')
 
 def main():
     # Grab filename and w from stdin
@@ -37,20 +127,20 @@ def main():
     f = open(filename)
     lines = f.readlines()
 
-    print(lines)
+    # Remove whitespace
+    for ind in range(len(lines)):
+        lines[ind] = lines[ind].strip()
+        if len(lines[ind]) == 0:
+            lines.remove(lines[ind])
 
     # Init problem variables
-    num_var = 0
-    num_domain = 0
     var_names = []
-    var_list = []
+    adj_list = {}
 
     # Init node variables
     domain = []
 
     # Assign values
-    num_var, num_domain = int(lines[0][0]), int(lines[0][2])
-    
     for name in lines[1].strip().split(' '):
         var_names.append(name)
 
@@ -59,7 +149,7 @@ def main():
 
     # Parsing adjacency list
     ind = 0
-    for line in lines[3:-1]:
+    for line in lines[3:]:
         new_adj_list = []
         adj_ind = 0
         for adj in line.strip().split(' '):
@@ -67,13 +157,16 @@ def main():
                 new_adj_list.append(var_names[adj_ind])
 
             adj_ind += 1
-        var_list.append(Node(var_names[ind], new_adj_list, copy.deepcopy(domain)))
+        adj_list[var_names[ind]] = new_adj_list
         ind += 1
-
+    
     # Create problem
-    problem = Problem(num_var, num_domain, var_names, var_list)
+    problem = Problem(adj_list, domain, var_names)
 
-    #res = search(problem)
+    res = search(problem)
+    
+    # Create and write to output
+    output(res)
 
 if __name__=='__main__':
     main()
