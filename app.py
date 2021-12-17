@@ -35,6 +35,7 @@ def complete(csp, assignment):
     return True
 
 # Select unassigned variable using MRV and Degree Heuristics
+# Returns next variable to use
 def selectUnassigned(csp, assignment):
     # MRV Heuristic
     # Number for minimum remaining value
@@ -69,6 +70,8 @@ def selectUnassigned(csp, assignment):
     return degree[0]
 
 # Inference function
+# Returns True if forward checking passes
+# False otherwise
 def inference(csp, var, assignment):
     neighbors = csp.adj[var]
     
@@ -116,8 +119,12 @@ def search(csp):
 def output(res):
     f = open("output.txt", 'w')
 
-    for var in res:
-        f.write(var + ' = ' + res[var][0] + '\n')
+    if res:
+        for var in res:
+            f.write(var + ' = ' + res[var][0] + '\n')
+
+    else:
+        f.write('FAIL')
 
 def main():
     # Grab filename and w from stdin
